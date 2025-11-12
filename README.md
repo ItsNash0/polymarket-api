@@ -5,7 +5,7 @@ A TypeScript Express server for sending orders to the Polymarket CLOB (Central L
 ## Features
 
 - 🔐 **Flexible Authentication** - Use environment variables or send credentials per request
-- 📝 **Order Management** - Create and post limit orders to Polymarket
+- 📝 **Order Management** - Create and post both limit and market orders to Polymarket
 - 🚀 **RESTful API** - Clean HTTP endpoints for order operations
 - ✅ **Type-Safe** - Built with TypeScript for better developer experience
 - 🔄 **Smart Caching** - Client instances are cached per credential pair
@@ -95,12 +95,14 @@ Returns server status.
 }
 ```
 
-### Create Order
+### Create Limit Order
 
 ```http
-POST /api/orders
+POST /api/orders/limit
 Content-Type: application/json
 ```
+
+Create a limit order with a specific price. Limit orders support GTC (Good Till Cancel) and GTD (Good Till Date) order types.
 
 **Request Body:**
 
@@ -109,10 +111,11 @@ Content-Type: application/json
   "tokenID": "0x...",           // Required: Market token ID
   "price": 0.5,                 // Required: Order price
   "side": "BUY",                // Required: "BUY" or "SELL"
-  "size": 10,                   // Required: Order size
+  "size": 10,                   // Required: Order size (number of shares)
   "tickSize": "0.001",          // Optional: Market tick size (auto-fetched if not provided)
   "negRisk": false,             // Optional: Negative risk flag (default: false)
   "orderType": "GTC",           // Optional: "GTC" or "GTD" (default: "GTC")
+  "expiration": 1234567890,     // Optional: Expiration timestamp (required for GTD orders)
   "privateKey": "...",          // Optional: Private key (if not using env vars)
   "funderAddress": "0x..."      // Optional: Funder address (if not using env vars)
 }
@@ -140,29 +143,120 @@ Content-Type: application/json
 }
 ```
 
+### Create Market Order
+
+```http
+POST /api/orders/market
+Content-Type: application/json
+```
+
+Create a market order that executes immediately at the current market price. Market orders support FOK (Fill or Kill) and FAK (Fill and Kill) order types.
+
+**Request Body:**
+
+```json
+{
+  "tokenID": "0x...",           // Required: Market token ID
+  "amount": 100,                // Required: Order amount in USD
+  "side": "BUY",                // Required: "BUY" or "SELL"
+  "orderType": "FOK",           // Required: "FOK" or "FAK"
+  "tickSize": "0.001",          // Optional: Market tick size (auto-fetched if not provided)
+  "privateKey": "...",          // Optional: Private key (if not using env vars)
+  "funderAddress": "0x..."      // Optional: Funder address (if not using env vars)
+}
+```
+
+**Note:** 
+- For market sell orders, only `tokenID`, `amount`, `side`, and `orderType` are required
+- If you provide `privateKey` or `funderAddress`, you must provide both. If neither is provided, the server will use environment variables.
+
+**Success Response:**
+
+```json
+{
+  "success": true,
+  "data": { /* order response from Polymarket */ },
+  "timestamp": "2024-01-01T00:00:00.000Z"
+}
+```
+
+**Error Response:**
+
+```json
+{
+  "success": false,
+  "error": "Error message",
+  "timestamp": "2024-01-01T00:00:00.000Z"
+}
+```
+
+### Create Order (Legacy Endpoint)
+
+```http
+POST /api/orders
+Content-Type: application/json
+```
+
+**Note:** This endpoint is maintained for backward compatibility. For new implementations, use `/api/orders/limit` or `/api/orders/market` instead.
+
+This endpoint creates a limit order with the same request body format as `/api/orders/limit`.
+
 ## Usage Examples
 
-### Example 1: Using Environment Variables
+### Example 1: Limit Order with Environment Variables
 
 If you have credentials in your `.env` file:
 
 ```bash
-curl -X POST http://localhost:3000/api/orders \
+curl -X POST http://localhost:3000/api/orders/limit \
   -H "Content-Type: application/json" \
   -d '{
     "tokenID": "0x1234...",
     "price": 0.5,
     "side": "BUY",
-    "size": 10
+    "size": 100,
+    "orderType": "GTD",
+    "expiration": 1735689600
   }'
 ```
 
-### Example 2: Sending Credentials in Request
+### Example 2: Market Order Buy
+
+Create a market buy order with FOK (Fill or Kill):
+
+```bash
+curl -X POST http://localhost:3000/api/orders/market \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tokenID": "0x1234...",
+    "amount": 100,
+    "side": "BUY",
+    "orderType": "FOK",
+    "tickSize": "0.01"
+  }'
+```
+
+### Example 3: Market Order Sell
+
+Create a market sell order with FAK (Fill and Kill):
+
+```bash
+curl -X POST http://localhost:3000/api/orders/market \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tokenID": "0x1234...",
+    "amount": 100,
+    "side": "SELL",
+    "orderType": "FAK"
+  }'
+```
+
+### Example 4: Sending Credentials in Request
 
 Send credentials directly in the request body:
 
 ```bash
-curl -X POST http://localhost:3000/api/orders \
+curl -X POST http://localhost:3000/api/orders/limit \
   -H "Content-Type: application/json" \
   -d '{
     "tokenID": "0x1234...",
@@ -174,10 +268,10 @@ curl -X POST http://localhost:3000/api/orders \
   }'
 ```
 
-### Example 3: JavaScript/TypeScript
+### Example 5: JavaScript/TypeScript - Limit Order
 
 ```typescript
-const response = await fetch('http://localhost:3000/api/orders', {
+const response = await fetch('http://localhost:3000/api/orders/limit', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -186,12 +280,36 @@ const response = await fetch('http://localhost:3000/api/orders', {
     tokenID: '0x1234...',
     price: 0.5,
     side: 'BUY',
-    size: 10,
+    size: 100,
+    orderType: 'GTD',
+    expiration: Math.floor(Date.now() / 1000) + 60, // 1 minute from now
     privateKey: 'your_private_key',      // Optional
     funderAddress: '0x...',              // Optional
-    orderType: 'GTC',
     tickSize: '0.001',                   // Optional - auto-fetched if not provided
     negRisk: false
+  })
+})
+
+const result = await response.json()
+console.log(result)
+```
+
+### Example 6: JavaScript/TypeScript - Market Order
+
+```typescript
+const response = await fetch('http://localhost:3000/api/orders/market', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    tokenID: '0x1234...',
+    amount: 100, // $100 USD
+    side: 'BUY',
+    orderType: 'FOK', // or 'FAK'
+    tickSize: '0.01', // Optional - auto-fetched if not provided
+    privateKey: 'your_private_key',      // Optional
+    funderAddress: '0x...'               // Optional
   })
 })
 
@@ -211,12 +329,22 @@ See the [Polymarket API Documentation](https://docs.polymarket.com/developers/ga
 
 ## Order Types
 
-The API supports the following order types:
+The API supports different order types depending on whether you're placing a limit or market order:
+
+### Limit Order Types
 
 - **GTC (Good Till Cancel)**: Order remains active until filled or cancelled (default)
-- **GTD (Good Till Date)**: Order remains active until a specific date
+- **GTD (Good Till Date)**: Order remains active until a specific expiration date. Requires `expiration` timestamp in the request.
 
-**Note:** FOK (Fill or Kill) and FAK (Fill and Kill) order types require market orders with a different structure and are not yet implemented in this API.
+### Market Order Types
+
+- **FOK (Fill or Kill)**: Order must be filled completely immediately, or it is cancelled
+- **FAK (Fill and Kill)**: Order is filled as much as possible immediately, with any remaining unfilled portion cancelled
+
+**Note:** 
+- Limit orders use `/api/orders/limit` endpoint with `price` and `size` parameters
+- Market orders use `/api/orders/market` endpoint with `amount` (USD) parameter
+- Market orders execute immediately at current market prices
 
 ## Project Structure
 

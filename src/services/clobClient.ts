@@ -150,6 +150,7 @@ export class ClobClient {
 			price: number
 			side: "BUY" | "SELL"
 			size: number
+			expiration?: number
 		},
 		marketParams: {
 			tickSize?: string
@@ -210,16 +211,114 @@ export class ClobClient {
 			const orderTypeEnum =
 				orderType === "GTD" ? OrderType.GTD : OrderType.GTC
 
+			const orderData: any = {
+				tokenID: orderParams.tokenID,
+				price: orderParams.price,
+				side: sideEnum,
+				size: orderParams.size,
+			}
+
+			// Add expiration if provided (for GTD orders)
+			if (orderParams.expiration !== undefined) {
+				orderData.expiration = orderParams.expiration
+			}
+
 			return await client.createAndPostOrder(
-				{
-					tokenID: orderParams.tokenID,
-					price: orderParams.price,
-					side: sideEnum,
-					size: orderParams.size,
-				},
+				orderData,
 				{
 					tickSize: tickSize as TickSize,
 					negRisk: marketParams.negRisk ?? false,
+				},
+				orderTypeEnum
+			)
+		} catch (error: any) {
+			// Provide more helpful error messages
+			if (error?.response?.status === 404) {
+				throw new Error(
+					`Market not found for tokenID: ${orderParams.tokenID}. Please verify the tokenID is correct.`
+				)
+			}
+			if (error?.message?.includes("toString")) {
+				throw new Error(
+					`Invalid market parameters. Market may not exist or tickSize may be incorrect. Original error: ${error.message}`
+				)
+			}
+			throw error
+		}
+	}
+
+	/**
+	 * Create and post a market order (static method)
+	 */
+	static async createAndPostMarketOrder(
+		orderParams: {
+			tokenID: string
+			amount: number // Amount in USD
+			side: "BUY" | "SELL"
+			orderType?: "FOK" | "FAK"
+		},
+		marketParams: {
+			tickSize?: string
+		},
+		orderType: "FOK" | "FAK" = "FOK",
+		credentials?: {
+			privateKey: string
+			funderAddress: string
+		}
+	) {
+		// Get client instance - use provided credentials or fall back to env vars
+		const client = credentials
+			? await ClobClient.getInstanceWithCredentials(
+					credentials.privateKey,
+					credentials.funderAddress
+			  )
+			: await ClobClient.getInstance()
+
+		// Validate market exists and get tickSize if not provided
+		let tickSize = marketParams.tickSize
+		if (!tickSize) {
+			try {
+				const marketInfo = await ClobClient.getMarketInfo(
+					orderParams.tokenID,
+					client
+				)
+				tickSize = marketInfo.tickSize
+				console.log(`📊 Market found. Using tickSize: ${tickSize}`)
+			} catch (error: any) {
+				throw new Error(
+					`Failed to get market info: ${error.message}. Please provide tickSize manually or use a valid tokenID.`
+				)
+			}
+		}
+
+		// Validate tickSize is not empty
+		if (!tickSize || tickSize === "") {
+			throw new Error(
+				"tickSize is required but could not be determined from market"
+			)
+		}
+
+		// Map side string to enum
+		const { Side } = await import("@polymarket/clob-client")
+		const sideEnum = orderParams.side === "BUY" ? Side.BUY : Side.SELL
+
+		// Use orderType from params if provided, otherwise use the function parameter
+		const finalOrderType = orderParams.orderType || orderType
+
+		// Map order type - FOK or FAK for market orders
+		const orderTypeEnum =
+			finalOrderType === "FAK" ? OrderType.FAK : OrderType.FOK
+
+		try {
+			return await client.createAndPostMarketOrder(
+				{
+					tokenID: orderParams.tokenID,
+					amount: orderParams.amount,
+					side: sideEnum,
+					orderType: orderTypeEnum,
+				},
+				{
+					tickSize: tickSize as TickSize,
 				},
 				orderTypeEnum
 			)
