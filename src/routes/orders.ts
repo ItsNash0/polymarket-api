@@ -70,6 +70,34 @@ router.post("/limit", async (req: Request, res: Response) => {
 			credentials
 		)
 
+		// Log order response
+		if (response?.success) {
+			console.log("\n✅ LIMIT ORDER SUCCESS")
+			console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+			console.log(`📋 Order ID: ${response.orderID || "N/A"}`)
+			console.log(`📊 Status: ${response.status || "N/A"}`)
+			if (response.takingAmount) {
+				console.log(`💰 Taking Amount: ${response.takingAmount}`)
+			}
+			if (response.makingAmount) {
+				console.log(`💵 Making Amount: ${response.makingAmount}`)
+			}
+			if (response.transactionsHashes?.length > 0) {
+				console.log(`🔗 Transaction Hashes:`)
+				response.transactionsHashes.forEach(
+					(hash: string, idx: number) => {
+						console.log(`   ${idx + 1}. ${hash}`)
+					}
+				)
+			}
+			console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+		} else if (response?.errorMsg) {
+			console.log("\n❌ LIMIT ORDER ERROR")
+			console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+			console.log(`⚠️  Error: ${response.errorMsg}`)
+			console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+		}
+
 		const orderResponse: OrderResponse = {
 			success: true,
 			data: response,
@@ -157,6 +185,34 @@ router.post("/market", async (req: Request, res: Response) => {
 			credentials
 		)
 
+		// Log order response
+		if (response?.success) {
+			console.log("\n✅ MARKET ORDER SUCCESS")
+			console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+			console.log(`📋 Order ID: ${response.orderID || "N/A"}`)
+			console.log(`📊 Status: ${response.status || "N/A"}`)
+			if (response.takingAmount) {
+				console.log(`💰 Taking Amount: ${response.takingAmount}`)
+			}
+			if (response.makingAmount) {
+				console.log(`💵 Making Amount: ${response.makingAmount}`)
+			}
+			if (response.transactionsHashes?.length > 0) {
+				console.log(`🔗 Transaction Hashes:`)
+				response.transactionsHashes.forEach(
+					(hash: string, idx: number) => {
+						console.log(`   ${idx + 1}. ${hash}`)
+					}
+				)
+			}
+			console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+		} else if (response?.errorMsg) {
+			console.log("\n❌ MARKET ORDER ERROR")
+			console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+			console.log(`⚠️  Error: ${response.errorMsg}`)
+			console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+		}
+
 		const orderResponse: OrderResponse = {
 			success: true,
 			data: response,
@@ -234,6 +290,34 @@ router.post("/", async (req: Request, res: Response) => {
 			orderRequest.orderType || "GTC",
 			credentials
 		)
+
+		// Log order response
+		if (response?.success) {
+			console.log("\n✅ LIMIT ORDER SUCCESS")
+			console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+			console.log(`📋 Order ID: ${response.orderID || "N/A"}`)
+			console.log(`📊 Status: ${response.status || "N/A"}`)
+			if (response.takingAmount) {
+				console.log(`💰 Taking Amount: ${response.takingAmount}`)
+			}
+			if (response.makingAmount) {
+				console.log(`💵 Making Amount: ${response.makingAmount}`)
+			}
+			if (response.transactionsHashes?.length > 0) {
+				console.log(`🔗 Transaction Hashes:`)
+				response.transactionsHashes.forEach(
+					(hash: string, idx: number) => {
+						console.log(`   ${idx + 1}. ${hash}`)
+					}
+				)
+			}
+			console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+		} else if (response?.errorMsg) {
+			console.log("\n❌ LIMIT ORDER ERROR")
+			console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+			console.log(`⚠️  Error: ${response.errorMsg}`)
+			console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+		}
 
 		const orderResponse: OrderResponse = {
 			success: true,
